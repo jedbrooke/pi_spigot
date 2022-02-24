@@ -6,7 +6,9 @@
 #include <unistd.h>
 #include <signal.h>
 
-typedef unsigned char uint8_t;
+#include "utility.h"
+#include "fractional64bit.h"
+
 
 // https://stackoverflow.com/a/8498251
 // we can cache the result of these
@@ -14,98 +16,76 @@ u_int64_t modpow16(register u_int64_t exponent, register u_int64_t const mod) {
     register u_int64_t base = 16 % mod;
     register u_int64_t result = 1;
     while(exponent > 0) {
-        if(exponent & 1) {
+        if(exponent & 1L) {
             result = (result * base) % mod;
         }
         base = (base * base) % mod;
-        exponent >>= 1;
+        exponent >>= 1L;
     }
     return result;
 }
 
-// u_int64_t modpow16_asm(u_int64_t exponent, u_int64_t const mod) {
-//     u_int64_t base = 16 % mod;
-//     u_int64_t result = 1;
-//     __asm__(
-//         "movq $0 %rax"
-//         "movq rbx, base"
-//         "movq rcx, mod"
-//         "begin:"
-//         "and rdx, rax, 1"
-//         "jz "
 
-
-//         "next_power:"
-//         "mul rbx, rbx"
-//         ""
-//     );
-// }
-
-#ifdef USE_ASM
-    #define MODPOW16 modpw16_asm
-#else
-    #define MODPOW16 modpow16
-#endif
-
-
-#define PRECISION_ITERS 0
-
-double component_sum(size_t n, u_int64_t b) {
-    double s1 = 0;
+fractional64bit component_sum(size_t n, u_int64_t b) {
+    fractional64bit s1 = 0;
     // grid stride EZ
     for(size_t k = 0; k < n; k++) {
-        u_int64_t k8_plus_b = (k << 3) + b;
-        u_int64_t numerator = MODPOW16(n-k, k8_plus_b);
-        s1 += numerator / (double) k8_plus_b;
-        s1 -= floor(s1);
+        u_int64_t k8_plus_b = (k << 3L) + b;
+        u_int64_t numerator = modpow16(n-k, k8_plus_b);
+        s1 += f64bdiv(numerator, k8_plus_b);
     }
     // k==n
-    s1 += 1.0 / ((n << 3) + b);
+    s1 += f64bdiv(1L, ((n << 3) + b));
     
 
     // more precision
     // I was still getting correct results without this component
     // for a single hexit
-    double s2 = 0;
-    for(size_t k = 1; k <= PRECISION_ITERS; k++) {
-        double numerator = pow((1 << 4), -(signed)k);
+    fractional64bit s2 = 0;
+
+    fractional64bit p = (1L << 63); // 1/2
+    fractional64bit q = 1L;
+    u_int64_t f = 16;
+    for(size_t k = 0; k < 64; k++) {
         u_int64_t k8_plus_b = ((k+n) << 3) + b;
-        s2 += numerator / k8_plus_b;
+        q = f64bdiv(1, k8_plus_b * f);
+        s2 += q;
+        f *= f;
     }
-    // if(b == 1){    
-    //     printf("s1:  %0.25f\n",s1);
-    //     printf("s2:  %0.25f\n",s2);
-    //     printf("sum: %0.25f\n",s1 + s2);
-    // }
+
+#ifdef DEBUG
+        if(b == 1){    
+            printf("s1:  %#018lx\n",s1);
+            printf("s2:  %#018lx\n",s2);
+            printf("sum: %#018lx\n",s1 + s2);
+        }
+#endif
     s1 += s2;
 
 
     return s1;
 }
 
-
-
-uint8_t extract_hexit(double a) {
-    a -= floor(a);
-    a *= 16;
-    // right now we are only using the most significant hexit
-    // but some of the following are probably accurate too
-    // figure out how accurate we can get
-    return (uint8_t) a;
-}
-
-double pi_spigot(size_t n) {
+fractional64bit pi_spigot(size_t n) {
     // if num_threads % 4 = 0
     // one thread per component
-    double a = 4 * component_sum(n,1);
-    double b = 2 * component_sum(n,4);
-    double c = component_sum(n,5);
-    double d = component_sum(n,6);
-    double res = a - b - c - d;
-    // printf("a:  %0.25f\n",a);
-    // printf("b:  %0.25f\n",b);
-    // printf("c:  %0.25f\n",c);
-    // printf("d:  %0.25f\n",d);
+    fractional64bit a = component_sum(n,1) << 2;
+    fractional64bit b = component_sum(n,4) << 1;
+    fractional64bit c = component_sum(n,5);
+    fractional64bit d = component_sum(n,6);
+
+    fractional64bit res = a - b - c - d;
+
+#ifdef DEBUG
+        printf("a:   %#018lx\n",a);
+        printf("b:   %#018lx\n",b);
+        printf("c:   %#018lx\n",c);
+        printf("d:   %#018lx\n",d);
+        printf("res: %#018lx\n",res);
+    }
+#endif
+
+
     return res;
 }
 
@@ -215,9 +195,13 @@ void pi_full(options opts) {
 
 
 void pi_slice(options opts) {
-    for(int i = 0; i < opts.range; i++) {
-        uint8_t d = pi_spigot_single(opts.n + i);
-        printf("%0x",d);
+    int step = opts.n > 1E5 ? 10 : 2;
+    for(int i = 0; i < opts.range; i+=step) {
+        fractional64bit d = pi_spigot(opts.n + i);
+        char str[17];
+        sprintf(str,"%.16lx",d);
+        str[step] = 0;
+        printf("%s",str);
     }
     printf("\n");
 }
@@ -227,7 +211,23 @@ int main(int argc, char* const* argv)
 
     options opts = parse_args(argc, argv);
 
+#ifdef DEBUG
+        printf("n = %ld\n",opts.n);
+        // int step = 10;
+        // for(size_t i = opts.n; i < opts.n + opts.range; i+=step) {
+        //     fractional64bit s = pi_spigot(i);
+        //     char str[17];
+        //     sprintf(str,"%0lx",s);
+        //     str[step] = 0;
+        //     printf("%s",str);
+        // }
+        for(size_t i = opts.n; i < opts.n + 100; i+=10) {
+            fractional64bit s = pi_spigot(i);
+            printf("%0lx\n",s);
+        }
+        printf("\n");
 
+#endif
     if (opts.full) {
         signal(SIGINT, handle_sigint);
         printf("3.");
@@ -235,10 +235,6 @@ int main(int argc, char* const* argv)
     } else {
         pi_slice(opts);
     }
-    // double s = pi_spigot(opts.n);
-    // printf("%0.25f\n",s);
-    // print_all_hexits(s);
-    // printf("\n");
 
     return 0;
 }
