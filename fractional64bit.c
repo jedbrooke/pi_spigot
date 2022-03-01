@@ -1,4 +1,5 @@
 #include "fractional64bit.h"
+#include "fixed128.h"
 
 #include <math.h>
 #include <stdio.h>
@@ -11,6 +12,7 @@ int f64b_isinf;
 /* 
     prints a fractional64bit value
 */
+
 
 #define PREC 20
 char* f64btoa(const fractional64bit f) {
@@ -99,33 +101,21 @@ fractional64bit dtof64b(double d) {
 }
 
 fractional64bit f64bmul(fractional64bit a, fractional64bit b) {
-    fractional64bit c = 0;
-    u_int64_t mask = (1L << 63);
-    while(a) {
-        a >>= 1;
-        if(b & mask) {
-            c += a;
-        }
-        mask >>= 1;
-    }
-    return c;
+    
+    fractional64bit p;
+    __asm__(
+        "mulq %%rbx\n"
+        : "=d" (p)
+        : "a" (a), "b"(b)
+    );
+    return p;
 }
 
 
 
 fractional64bit f64bmul_int(fractional64bit a, u_int64_t b) {
-    fractional64bit c = 0;
-    u_int64_t mask = 1;
-    while(a) {
-        if(b & mask) {
-            c += a;
-        }
-        mask <<= 1;
-        a <<= 1;
-    }
-    return c;
+    return a * b;
 }
-
 
 
 fractional64bit f64bdiv(u_int64_t numerator, u_int64_t denominator) {
@@ -140,13 +130,52 @@ fractional64bit f64bdiv(u_int64_t numerator, u_int64_t denominator) {
 
     fractional64bit q = 0;
     __asm__(
-        "movq %1, %%rdx\n"
         "xor %%rax, %%rax\n"
-        "movq %2, %%rcx\n"
         "divq %%rcx\n"
-        "movq %%rax, %0\n"
-        : "=r" (q)
-        : "r" (numerator), "r" (denominator)
+        : "=a" (q)
+        : "d" (numerator), "c" (denominator)
     );
     return q;
+}
+
+// based on Goldschmidt division
+// https://en.wikipedia.org/wiki/Division_algorithm#Goldschmidt_division
+const ufixed128 TWO = {2,0};
+
+
+fractional64bit f64bdiv_gs(u_int64_t numerator, u_int64_t denominator) {
+    if(denominator == 0) {
+        f64b_isnan = 1;
+        return 0;
+    }
+
+    if(numerator > denominator) {
+        numerator %= denominator;
+    }
+    if(numerator == 0) {
+        return 0;
+    }
+    if (denominator == 1) {
+        return 0;
+    }
+
+    // scale n and d to be [0.5,1]
+    // fractional64bit n_prime = numerator << __builtin_clzl(numerator); 
+    int lzcnt = __builtin_clzl(denominator);
+    fractional64bit d_prime = denominator << lzcnt;
+    
+    ufixed128 d = {0,d_prime};
+    ufixed128 n = {numerator, 0};
+    n = uf128shiftlli(n, -(64 - lzcnt));
+
+
+    ufixed128 f = uf128sub(TWO, d);
+    
+    for(int i = 0; i < 6; i++) {
+        n = uf128mul(n, f);
+        d = uf128mul(d, f);
+        f = uf128sub(TWO, d);
+    }
+
+    return n.fraction;
 }

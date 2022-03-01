@@ -13,4 +13,6 @@ fractional64bit f64bmul_int(fractional64bit a, u_int64_t b);
 
 fractional64bit f64bdiv(u_int64_t numerator, u_int64_t denominator);
 
+fractional64bit f64bdiv_gs(u_int64_t numerator, u_int64_t denominator);
+
 char* f64btoa(const fractional64bit f);

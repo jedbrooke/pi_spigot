@@ -1,8 +1,10 @@
-CC=gcc
-CFLAGS=-O3 -lm -g
+CC=g++
+CFLAGS=-pg -O3 -lm -g
 
-pi_spigot: pi_spigot.c utility.o fractional64bit.o
-	$(CC) -o pi_spigot pi_spigot.c utility.o fractional64bit.o $(CFLAGS)
+default: pi_spigot
+
+pi_spigot: pi_spigot.c utility.o fractional64bit.o fixed128.o
+	$(CC) -o pi_spigot pi_spigot.c *.o $(CFLAGS)
 
 .PHONY: check
 check: pi_spigot check.sh
@@ -13,4 +15,4 @@ check: pi_spigot check.sh
 
 .PHONY: clean
 clean:
-	rm -rf pi_spigot
+	rm -rf pi_spigot *.o

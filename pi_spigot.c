@@ -32,26 +32,26 @@ fractional64bit component_sum(size_t n, u_int64_t b) {
     for(size_t k = 0; k < n; k++) {
         u_int64_t k8_plus_b = (k << 3L) + b;
         u_int64_t numerator = modpow16(n-k, k8_plus_b);
-        s1 += f64bdiv(numerator, k8_plus_b);
+        s1 += f64bdiv_gs(numerator, k8_plus_b);
     }
     // k==n
-    s1 += f64bdiv(1L, ((n << 3) + b));
+    s1 += f64bdiv_gs(1L, ((n << 3) + b));
     
 
     // more precision
     // I was still getting correct results without this component
-    // for a single hexit
+    // for 10 hexits
     fractional64bit s2 = 0;
 
-    fractional64bit p = (1L << 63); // 1/2
-    fractional64bit q = 1L;
-    u_int64_t f = 16;
-    for(size_t k = 0; k < 64; k++) {
-        u_int64_t k8_plus_b = ((k+n) << 3) + b;
-        q = f64bdiv(1, k8_plus_b * f);
-        s2 += q;
-        f *= f;
-    }
+    // fractional64bit p = (1L << 63); // 1/2
+    // fractional64bit q = 1L;
+    // u_int64_t f = 16;
+    // for(size_t k = 0; k < 16; k++) {
+    //     u_int64_t k8_plus_b = ((k+n) << 3) + b;
+    //     q = f64bdiv(1, k8_plus_b * f);
+    //     s2 += q;
+    //     f *= f;
+    // }
 
 #ifdef DEBUG
         if(b == 1){    
@@ -77,12 +77,11 @@ fractional64bit pi_spigot(size_t n) {
     fractional64bit res = a - b - c - d;
 
 #ifdef DEBUG
-        printf("a:   %#018lx\n",a);
-        printf("b:   %#018lx\n",b);
-        printf("c:   %#018lx\n",c);
-        printf("d:   %#018lx\n",d);
-        printf("res: %#018lx\n",res);
-    }
+    printf("a:   %#018lx\n",a);
+    printf("b:   %#018lx\n",b);
+    printf("c:   %#018lx\n",c);
+    printf("d:   %#018lx\n",d);
+    printf("res: %#018lx\n",res);
 #endif
 
 
@@ -221,13 +220,10 @@ int main(int argc, char* const* argv)
         //     str[step] = 0;
         //     printf("%s",str);
         // }
-        for(size_t i = opts.n; i < opts.n + 100; i+=10) {
-            fractional64bit s = pi_spigot(i);
-            printf("%0lx\n",s);
-        }
+        fractional64bit s = pi_spigot(opts.n);
+        printf("%0lx\n",s);
         printf("\n");
-
-#endif
+#else
     if (opts.full) {
         signal(SIGINT, handle_sigint);
         printf("3.");
@@ -235,7 +231,7 @@ int main(int argc, char* const* argv)
     } else {
         pi_slice(opts);
     }
-
+#endif
     return 0;
 }
 

@@ -12,7 +12,9 @@ still deciding on the specifics, but seeing as Pi-Hex was able to get to the 1 Q
  - [x] implement basic [BBP formula](https://en.wikipedia.org/wiki/Bailey%E2%80%93Borwein%E2%80%93Plouffe_formula)
  - [ ] look into implementing [Bellard's formula](https://en.wikipedia.org/wiki/Bellard%27s_formula)
  - [x] implement custom 64bit fractional types
+    - [ ] experiment with *faster* 64bit division
  - [ ] implement *enhanced* 256 bit fractional types for more precision
+    - [ ] experiment with generalising to arbitrary bit debth
  - [ ] parallelize with multi-threading
  - [ ] distribute over many systems with Golem's `yapapi`
 
