@@ -1,5 +1,5 @@
-CC=g++
-CFLAGS=-pg -O3 -lm -g
+CC=gcc
+CFLAGS=-O3 -lm -g
 
 default: pi_spigot
 
