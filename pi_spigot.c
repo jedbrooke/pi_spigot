@@ -26,6 +26,21 @@ u_int64_t modpow16(register u_int64_t exponent, register u_int64_t const mod) {
 }
 
 
+/* 
+    still experimenting with different division methods
+    here are some result for finding hexits 999950 - 1000000
+    with f64dbiv:       0m5.512s
+    with f64bdiv_gs:    0m5.528s
+    with f64bdiv_nr:    0m8.464s
+    f64bdiv_nr can probably be optimized more
+    the motivation for finding other division schemes is to eventually 
+    scale beyond 64 bits. there is no hardware division for such large
+    numbers, and we can employ fast multiplication algorithms to accomplish
+    division. These methods will scale to higher bits
+    currently f64bdiv_nr is more accurate than f64bdiv_gs, but if we run 
+    f64bdiv_gs for more iterations it will lose its speed but become as accurate
+*/
+
 fractional64bit component_sum(size_t n, u_int64_t b) {
     fractional64bit s1 = 0;
     // grid stride EZ

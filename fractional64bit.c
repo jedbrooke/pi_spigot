@@ -1,5 +1,4 @@
 #include "fractional64bit.h"
-#include "fixed128.h"
 
 #include <math.h>
 #include <stdio.h>
@@ -117,6 +116,10 @@ fractional64bit f64bmul_int(fractional64bit a, u_int64_t b) {
     return a * b;
 }
 
+inline fractional64bit f64bmul_uf128(fractional64bit a, ufixed128 b) {
+    return f64bmul_int(a, b.integer) + f64bmul(a, b.fraction);
+}
+
 
 fractional64bit f64bdiv(u_int64_t numerator, u_int64_t denominator) {
     f64b_isnan = 0;
@@ -138,11 +141,11 @@ fractional64bit f64bdiv(u_int64_t numerator, u_int64_t denominator) {
     return q;
 }
 
-// based on Goldschmidt division
-// https://en.wikipedia.org/wiki/Division_algorithm#Goldschmidt_division
 const ufixed128 TWO = {2,0};
 
 
+// based on Goldschmidt division
+// https://en.wikipedia.org/wiki/Division_algorithm#Goldschmidt_division
 fractional64bit f64bdiv_gs(u_int64_t numerator, u_int64_t denominator) {
     if(denominator == 0) {
         f64b_isnan = 1;
@@ -160,22 +163,65 @@ fractional64bit f64bdiv_gs(u_int64_t numerator, u_int64_t denominator) {
     }
 
     // scale n and d to be [0.5,1]
-    // fractional64bit n_prime = numerator << __builtin_clzl(numerator); 
     int lzcnt = __builtin_clzl(denominator);
     fractional64bit d_prime = denominator << lzcnt;
-    
-    ufixed128 d = {0,d_prime};
-    ufixed128 n = {numerator, 0};
-    n = uf128shiftlli(n, -(64 - lzcnt));
+    fractional64bit n_prime = numerator << lzcnt;
 
 
-    ufixed128 f = uf128sub(TWO, d);
+    ufixed128 f = uf128sub_f64b(TWO, d_prime);
     
     for(int i = 0; i < 6; i++) {
-        n = uf128mul(n, f);
-        d = uf128mul(d, f);
-        f = uf128sub(TWO, d);
+        n_prime = f64bmul_uf128(n_prime, f);
+        d_prime = f64bmul_uf128(d_prime, f);
+        f = uf128sub_f64b(TWO, d_prime);
     }
 
-    return n.fraction;
+    return n_prime;
 }
+
+const ufixed128 _48_ON_17 = {2,0xd2d2d2d2d2d2d2d2};
+const ufixed128 _32_ON_17 = {1,0xe1e1e1e1e1e1e1e1};
+const sfixed128 s_ONE = {0,1,0};
+#define ALL_ONES 0xFFFFFFFFFFFFFFFF
+
+// based on Newton–Raphson division
+// https://en.wikipedia.org/wiki/Division_algorithm#Newton%E2%80%93Raphson_division
+fractional64bit f64bdiv_nr(u_int64_t numerator, u_int64_t denominator) {
+    
+    
+    if(denominator == 0) {
+        f64b_isnan = 1;
+        return 0;
+    }
+
+    if(numerator > denominator) {
+        numerator %= denominator;
+    }
+    if(numerator == 0) {
+        return 0;
+    }
+    if (denominator == 1) {
+        return 0;
+    }
+
+    // scale n and d to be [0.5,1]
+    int lzcnt = __builtin_clzl(denominator);
+    fractional64bit d_prime_frac = denominator << lzcnt;
+    fractional64bit n_prime_frac = numerator << lzcnt;
+
+    ufixed128 d_prime = {0, d_prime_frac};
+    ufixed128 n_prime = {0, n_prime_frac};
+
+    sfixed128 x = f128_make_signed(uf128sub(_48_ON_17, uf128mul(_32_ON_17, d_prime)), 0);
+
+    for(int i = 0; i < 4; i++) {
+        sfixed128 t = f128_make_signed(uf128mul(d_prime, f128_make_unsigned(x)), 0); 
+        sfixed128 u = sf128sub(s_ONE, t);
+        sfixed128 v = sf128mul(x, u);
+        x = sf128add(x, v);
+    }
+    ufixed128 q = uf128mul(n_prime, f128_make_unsigned(x));
+    return q.fraction;
+}
+
+
