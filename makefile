@@ -1,10 +1,10 @@
-CC=gcc
-CFLAGS=-O3 -lm -g
+CC=g++
+CFLAGS=-O3 -lm -g --std=c++11
 
 default: pi_spigot
 
-pi_spigot: pi_spigot.c utility.o fractional64bit.o fixed128.o
-	$(CC) -o pi_spigot pi_spigot.c *.o $(CFLAGS)
+pi_spigot: pi_spigot.cpp 
+	$(CC) -o pi_spigot pi_spigot.cpp -I./fractionalBignum $(CFLAGS)
 
 .PHONY: check
 check: pi_spigot check.sh
