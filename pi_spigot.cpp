@@ -12,16 +12,26 @@
 
 
 // https://stackoverflow.com/a/8498251
-// we can cache the result of these
-u_int64_t modpow16(register u_int64_t exponent, register u_int64_t const mod) {
-    register u_int64_t base = 16 % mod;
-    register u_int64_t result = 1;
-    while(exponent > 0) {
-        if(exponent & 1L) {
-            result = (result * base) % mod;
+u_int64_t modpow16(u_int64_t exponent, u_int64_t const mod) {
+    u_int64_t result = 1;
+    u_int64_t base = 16;
+    while (exponent > 0) {
+        if (exponent & 1) {
+            __asm__(
+                "mulq %%rbx\n"
+                "divq %%rcx"
+                : "=d" (result)
+                : "a" (result), "b" (base), "c" (mod)
+            );
         }
-        base = (base * base) % mod;
-        exponent >>= 1L;
+        __asm__(
+            "mulq %%rax\n"
+            "divq %%rbx"
+            : "=d" (base)
+            : "a" (base), "b" (mod) 
+        );
+
+        exponent >>= 1;
     }
     return result;
 }
