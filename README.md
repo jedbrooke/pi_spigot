@@ -9,15 +9,16 @@ still deciding on the specifics, but seeing as Pi-Hex was able to get to the 1 Q
 
 
 ## TODO:
+ - [ ] figure out why it breaks after around 500mil
  - [x] implement basic [BBP formula](https://en.wikipedia.org/wiki/Bailey%E2%80%93Borwein%E2%80%93Plouffe_formula)
  - [ ] look into implementing [Bellard's formula](https://en.wikipedia.org/wiki/Bellard%27s_formula)
  - [x] implement custom 64bit fractional types
     - [x] experiment with *faster* 64bit division
- - [ ] **implement *enhanced* arbitrary depth fractional types for more precision**
+ - [x] **implement *enhanced* arbitrary depth fractional types for more precision**
     - [x] addition (see this [gist](https://gist.github.com/jedbrooke/5b3fbfe9a458e8d7d4272391b4d71597))
-    - [ ] multiplication
-    - [ ] divsion (based on multiplication with nr/gs)
-    - [ ] (optional side quest) experiment with generalising to arbitrary bit debth
+    - [x] multiplication
+    - [x] division (based on multiplication with nr/gs)
+    - [x] (optional side quest) experiment with generalising to arbitrary bit debth
  - [ ] parallelize with multi-threading
    - [ ] (optional side quest) gpu accelerated version
  - [ ] distribute over many systems with Golem's `yapapi`

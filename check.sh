@@ -1,9 +1,8 @@
 #!/bin/bash
 # numbers from http://www.numberworld.org/digits/Pi/
 PROG=./pi_spigot
-# removed for now because it is failing 
-# echo "checking 0-50"
-# cmp <(echo "243f6a8885a308d313198a2e03707344a4093822299f31d008") <($PROG 0) && echo "success"
+echo "checking 0-50"
+cmp <(echo "243f6a8885a308d313198a2e03707344a4093822299f31d008") <($PROG 0) && echo "success"
 echo "checking 50-100"
 cmp <(echo "2efa98ec4e6c89452821e638d01377be5466cf34e90c6cc0ac") <($PROG 50) && echo "success"
 echo "checking 9950-10000"
