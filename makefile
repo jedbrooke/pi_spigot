@@ -1,10 +1,19 @@
 CC=g++
-CFLAGS=-O3 -lm -g --std=c++11
+CFLAGS=-I./fractionalBignum -lm -g --std=c++11 -O3
 
 default: pi_spigot
 
-pi_spigot: pi_spigot.cpp 
-	$(CC) -o pi_spigot pi_spigot.cpp -I./fractionalBignum $(CFLAGS)
+.PHONY: deps
+deps: fractionalBignum.a
+
+fractionalBignum.a: fractionalBignum
+	cd fractionalBignum; \
+	make; \
+	cp fractionalBignum.a ..
+
+
+pi_spigot: pi_spigot.cpp deps
+	$(CC) -o pi_spigot pi_spigot.cpp fractionalBignum.a $(CFLAGS)
 
 .PHONY: check
 check: pi_spigot check.sh
@@ -15,4 +24,4 @@ check: pi_spigot check.sh
 
 .PHONY: clean
 clean:
-	rm -rf pi_spigot *.o
+	rm -rf pi_spigot *.o *.a
