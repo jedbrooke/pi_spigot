@@ -53,7 +53,7 @@ u_int64_t modpow16(u_int64_t exponent, u_int64_t const mod) {
 */
 
 /* precision for fractionalBignum*/
-const size_t D = 16;
+const size_t D = 4;
 
 fractionalBignum<D> component_sum(size_t n, u_int64_t b) {
     fractionalBignum<D> s1;
