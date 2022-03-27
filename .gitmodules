@@ -1,0 +1,3 @@
+[submodule "fractionalBignum"]
+	path = fractionalBignum
+	url = git@github.com:jedbrooke/fractionalBignum.git

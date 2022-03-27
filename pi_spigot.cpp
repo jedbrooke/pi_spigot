@@ -4,10 +4,11 @@
 #include <math.h>
 #include <stdbool.h>
 #include <unistd.h>
-#include <signal.h>
+#include <iostream>
+#include <sstream>
+#include <string>
 
-#include "utility.h"
-#include "fractional64bit.h"
+#include "fractionalBignum.hpp"
 
 
 // https://stackoverflow.com/a/8498251
@@ -51,38 +52,42 @@ u_int64_t modpow16(u_int64_t exponent, u_int64_t const mod) {
     f64bdiv_gs for more iterations it will lose its speed but become as accurate
 */
 
-fractional64bit component_sum(size_t n, u_int64_t b) {
-    fractional64bit s1 = 0;
+/* precision for fractionalBignum*/
+const size_t D = 4;
+
+fractionalBignum<D> component_sum(size_t n, u_int64_t b) {
+    fractionalBignum<D> s1;
     // grid stride EZ
     for(size_t k = 0; k < n; k++) {
         u_int64_t k8_plus_b = (k << 3L) + b;
         u_int64_t numerator = modpow16(n-k, k8_plus_b);
-        s1 += f64bdiv_gs(numerator, k8_plus_b);
+        // std::cout << numerator << " / " << k8_plus_b << std::endl;
+        auto p = fb_div<D>(numerator, k8_plus_b);
+        // std::cout << p.decimal_str() << std::endl;
+        s1 += p;
     }
     // k==n
-    s1 += f64bdiv_gs(1L, ((n << 3) + b));
+    s1 += fb_div<D>(1L, ((n << 3) + b));
     
 
     // more precision
     // I was still getting correct results without this component
     // for 10 hexits
-    fractional64bit s2 = 0;
-
-    // fractional64bit p = (1L << 63); // 1/2
-    // fractional64bit q = 1L;
-    // u_int64_t f = 16;
-    // for(size_t k = 0; k < 16; k++) {
-    //     u_int64_t k8_plus_b = ((k+n) << 3) + b;
-    //     q = f64bdiv(1, k8_plus_b * f);
-    //     s2 += q;
-    //     f *= f;
-    // }
+    fractionalBignum<D> p;
+    fractionalBignum<D> s2;
+    auto k = 1;
+    do {
+        auto q = fb_div<D>(1, (8 * (n+k)) + b);
+        p = fractionalBignum<D>(pow(16,-k));
+        s2 += p * q;
+        k++;
+    } while(not p.isZero());
 
 #ifdef DEBUG
-        if(b == 1){    
-            printf("s1:  %#018lx\n",s1);
-            printf("s2:  %#018lx\n",s2);
-            printf("sum: %#018lx\n",s1 + s2);
+        if(b == 5){    
+            std::cout << "s1:\t" << s1 << std::endl;
+            std::cout << "s2:\t" << s2 << std::endl;
+            std::cout << "sum:\t" << s1 + s2 << std::endl;
         }
 #endif
     s1 += s2;
@@ -91,57 +96,26 @@ fractional64bit component_sum(size_t n, u_int64_t b) {
     return s1;
 }
 
-fractional64bit pi_spigot(size_t n) {
+fractionalBignum<D> pi_spigot(size_t n) {
     // if num_threads % 4 = 0
     // one thread per component
-    fractional64bit a = component_sum(n,1) << 2;
-    fractional64bit b = component_sum(n,4) << 1;
-    fractional64bit c = component_sum(n,5);
-    fractional64bit d = component_sum(n,6);
-
-    fractional64bit res = a - b - c - d;
+    auto a = component_sum(n,1) << 2;
+    auto b = component_sum(n,4) << 1;
+    auto c = component_sum(n,5);
+    auto d = component_sum(n,6);
+    
+    auto res = a - b - c - d;
 
 #ifdef DEBUG
-    printf("a:   %#018lx\n",a);
-    printf("b:   %#018lx\n",b);
-    printf("c:   %#018lx\n",c);
-    printf("d:   %#018lx\n",d);
-    printf("res: %#018lx\n",res);
+    std::cout << a << std::endl;
+    std::cout << b << std::endl;
+    std::cout << c << std::endl;
+    std::cout << d << std::endl;
 #endif
 
 
     return res;
 }
-
-
-
-uint8_t pi_spigot_single(size_t n) {
-    
-    double s = pi_spigot(n);
-    return extract_hexit(s);
-}
-
-void print_digits(uint8_t* digits, size_t n) {
-    for(size_t i = 0; i < n; i++) {
-        printf("%d",digits[i]);
-    }
-}
-void print_hexits(uint8_t* hexits, size_t n) {
-    for(size_t i = 0; i < n; i++) {
-        printf("%0x",hexits[i]);
-    }
-}
-
-
-void print_all_hexits(double s) {
-    do {
-        printf("%0x",extract_hexit(s));
-        s *= 16;
-        s -= floor(s);
-
-    } while(s > 0);
-}
-
 
 typedef struct options {
     bool full;
@@ -192,71 +166,35 @@ options parse_args(int argc, char* const* argv) {
     return opts;
 }
 
-sig_atomic_t recieved_sigint = false;
-void handle_sigint(int p){
-    recieved_sigint = true;
-}
-
-
-void pi_full(options opts) {
-    uint8_t* hexits = (uint8_t*) malloc(opts.n);
-    size_t checkpoint = opts.n / 100;
-    // find pi
-    for(size_t i = 0; i < opts.n; i++) {
-        if (i % checkpoint == 0 && opts.progress) {
-            fprintf(stderr,"%ld percent done\n", i / checkpoint);
-        }
-        hexits[i] = pi_spigot_single(i);
-        if(recieved_sigint) {
-            opts.n = i;
-            break;
-        }
-    }
-    printf("3.");
-    print_hexits(hexits, opts.n);
-    printf("\n");
-}
-
-
 void pi_slice(options opts) {
-    int step = opts.n > 1E5 ? 10 : 2;
+    const int step = (D * 16) - 4;
+    int total_steps = 0;
+
     for(int i = 0; i < opts.range; i+=step) {
-        fractional64bit d = pi_spigot(opts.n + i);
-        char str[17];
-        sprintf(str,"%.16lx",d);
-        str[step] = 0;
-        printf("%s",str);
+        auto d = pi_spigot(opts.n + i);
+        auto str = d.hex_str();
+        total_steps += step;
+        if(total_steps < opts.range) {
+            std::cout << str.substr(0,step);
+        } else {
+            std::cout << str.substr(0,opts.range - (total_steps - step));
+        }
     }
     printf("\n");
 }
 
 int main(int argc, char* const* argv)
 {
-
     options opts = parse_args(argc, argv);
 
-#ifdef DEBUG
-        printf("n = %ld\n",opts.n);
-        // int step = 10;
-        // for(size_t i = opts.n; i < opts.n + opts.range; i+=step) {
-        //     fractional64bit s = pi_spigot(i);
-        //     char str[17];
-        //     sprintf(str,"%0lx",s);
-        //     str[step] = 0;
-        //     printf("%s",str);
-        // }
-        fractional64bit s = pi_spigot(opts.n);
-        printf("%0lx\n",s);
-        printf("\n");
-#else
     if (opts.full) {
-        signal(SIGINT, handle_sigint);
         printf("3.");
-        pi_full(opts);
+        opts.range = opts.n;
+        opts.n = 0;
+        pi_slice(opts);
     } else {
         pi_slice(opts);
     }
-#endif
     return 0;
 }
 
