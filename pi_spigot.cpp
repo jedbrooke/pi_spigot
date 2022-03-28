@@ -45,11 +45,11 @@ fractionalBignum<D> component_sum(size_t n, u_int64_t b) {
     for(size_t k = 0; k < n; k++) {
         u_int64_t k8_plus_b = (k << 3L) + b;
         u_int64_t numerator = modpow16(n-k, k8_plus_b);
-        auto p = div_gs<D>(numerator, k8_plus_b);
+        auto p = fb_div<D>(numerator, k8_plus_b);
         s1 += p;
     }
     // k==n
-    s1 += div_gs<D>(1L, ((n << 3) + b));
+    s1 += fb_div<D>(1L, ((n << 3) + b));
     
 
     // more precision
@@ -57,7 +57,7 @@ fractionalBignum<D> component_sum(size_t n, u_int64_t b) {
     fractionalBignum<D> s2;
     auto k = 1;
     do {
-        auto q = div_gs<D>(1, (8 * (n+k)) + b);
+        auto q = fb_div<D>(1, (8 * (n+k)) + b);
         p = fractionalBignum<D>(pow(2,-4 * k));
         s2 += p * q;
         k++;

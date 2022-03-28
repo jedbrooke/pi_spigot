@@ -9,7 +9,7 @@ still deciding on the specifics, but seeing as Pi-Hex was able to get to the 1 Q
 
 
 ## TODO:
- - [ ] figure out why it breaks after around 500mil
+ - [x] figure out why it breaks after around 500mil
  - [x] implement basic [BBP formula](https://en.wikipedia.org/wiki/Bailey%E2%80%93Borwein%E2%80%93Plouffe_formula)
  - [ ] look into implementing [Bellard's formula](https://en.wikipedia.org/wiki/Bellard%27s_formula)
  - [x] implement custom 64bit fractional types
@@ -21,6 +21,7 @@ still deciding on the specifics, but seeing as Pi-Hex was able to get to the 1 Q
     - [x] (optional side quest) experiment with generalising to arbitrary bit debth
  - [ ] parallelize with multi-threading
    - [ ] (optional side quest) gpu accelerated version
+ - [ ] speed up with `avx`
  - [ ] distribute over many systems with Golem's `yapapi`
 
 
