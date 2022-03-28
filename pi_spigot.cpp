@@ -37,48 +37,28 @@ u_int64_t modpow16(u_int64_t exponent, u_int64_t const mod) {
 }
 
 
-/* 
-    still experimenting with different division methods
-    here are some result for finding hexits 999950 - 1000000
-    with f64dbiv:       0m5.512s
-    with f64bdiv_gs:    0m5.528s
-    with f64bdiv_nr:    0m8.464s
-    f64bdiv_nr can probably be optimized more
-    the motivation for finding other division schemes is to eventually 
-    scale beyond 64 bits. there is no hardware division for such large
-    numbers, and we can employ fast multiplication algorithms to accomplish
-    division. These methods will scale to higher bits
-    currently f64bdiv_nr is more accurate than f64bdiv_gs, but if we run 
-    f64bdiv_gs for more iterations it will lose its speed but become as accurate
-*/
-
 /* precision for fractionalBignum*/
 const size_t D = 4;
 
 fractionalBignum<D> component_sum(size_t n, u_int64_t b) {
     fractionalBignum<D> s1;
-    // grid stride EZ
     for(size_t k = 0; k < n; k++) {
         u_int64_t k8_plus_b = (k << 3L) + b;
         u_int64_t numerator = modpow16(n-k, k8_plus_b);
-        // std::cout << numerator << " / " << k8_plus_b << std::endl;
-        auto p = fb_div<D>(numerator, k8_plus_b);
-        // std::cout << p.decimal_str() << std::endl;
+        auto p = div_gs<D>(numerator, k8_plus_b);
         s1 += p;
     }
     // k==n
-    s1 += fb_div<D>(1L, ((n << 3) + b));
+    s1 += div_gs<D>(1L, ((n << 3) + b));
     
 
     // more precision
-    // I was still getting correct results without this component
-    // for 10 hexits
     fractionalBignum<D> p;
     fractionalBignum<D> s2;
     auto k = 1;
     do {
-        auto q = fb_div<D>(1, (8 * (n+k)) + b);
-        p = fractionalBignum<D>(pow(16,-k));
+        auto q = div_gs<D>(1, (8 * (n+k)) + b);
+        p = fractionalBignum<D>(pow(2,-4 * k));
         s2 += p * q;
         k++;
     } while(not p.isZero());
@@ -128,7 +108,7 @@ typedef struct options {
 options parse_args(int argc, char* const* argv) {
     int option;
     bool error = false;
-    options opts = {false, false, 50, 50};
+    options opts = {false, false, 0, 50};
 
     while((option = getopt(argc, argv, "fp")) != -1) {
         switch(option) {
@@ -161,6 +141,10 @@ options parse_args(int argc, char* const* argv) {
     if (error) {
         fprintf(stderr,"Usage: ./pi_spigot [-f -p] n [range (default 50)]");
         exit(1);
+    }
+
+    if(opts.progress) {
+        std::cerr << "the progress option is not currently implemented" << std::endl;
     }
 
     return opts;
