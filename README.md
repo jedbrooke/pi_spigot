@@ -7,6 +7,13 @@ current performance:
 ```
 50 hexits around the 1millionth hexit: 1.5s
 ```
+Usage:
+```
+./pi_spigot [-f] n [range (default 50)
+```
+`n` is the starting position to find hexits from, range is how many hexits to find
+
+the `-f` flag will make the program output all hexits from 0 to `n`
 
 
 
