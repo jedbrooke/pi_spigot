@@ -9,7 +9,7 @@ current performance:
 ```
 Usage:
 ```
-./pi_spigot [-f] n [range (default 50)
+./pi_spigot [-f] n [range (default 50)]
 ```
 `n` is the starting position to find hexits from, range is how many hexits to find
 
