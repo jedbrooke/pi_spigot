@@ -1,5 +1,5 @@
 CC=g++
-CFLAGS=-I./fractionalBignum -lm -g --std=c++11 -O3
+CFLAGS=-I./fractionalBignum -lm -g --std=c++11 -O3 -mavx2
 
 default: pi_spigot
 

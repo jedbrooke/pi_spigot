@@ -8,7 +8,11 @@
 #include <sstream>
 #include <string>
 
+#include <immintrin.h>
+
 #include "fractionalBignum.hpp"
+
+
 
 
 // https://stackoverflow.com/a/8498251
@@ -74,6 +78,34 @@ fractionalBignum<D> component_sum(size_t n, u_int64_t b) {
 
 
     return s1;
+}
+
+double pi_spigot_avx(size_t n) {
+    __m256d s_vec = _mm256_setzero_pd();
+    double b[4] = {1,4,5,6};
+    double numerators[4];
+    double k8_plus_b[4];
+    __m256d k8_plus_b_vec;
+    __m256d numerators_vec;
+
+    for(size_t k = 0; k < n; k++) {
+        for(int i = 0; i < 4; i++) {
+            k8_plus_b[i] = (k * 8) + b[i];
+            numerators[i] = modpow16(n-k, k8_plus_b[i]);
+        }
+        k8_plus_b_vec = _mm256_setr_pd(k8_plus_b[0], k8_plus_b[1], k8_plus_b[2], k8_plus_b[3]);
+        numerators_vec = _mm256_setr_pd(numerators[0], numerators[1], numerators[2], numerators[3]);
+        auto p = _mm256_div_pd(numerators_vec, k8_plus_b_vec);
+        s_vec = _mm256_add_pd(p, s_vec);
+        s_vec = _mm256_sub_pd(s_vec, _mm256_floor_pd(s_vec));
+    }
+
+    double s[4];
+    memcpy(s, &s_vec, 4 * sizeof(double));
+    s[0] *= 4;
+    s[1] *= 2;
+    double res = s[0] - s[1] - s[2] - s[3];
+    return res;
 }
 
 fractionalBignum<D> pi_spigot(size_t n) {
@@ -167,17 +199,53 @@ void pi_slice(options opts) {
     printf("\n");
 }
 
+uint8_t extract_hexit(double a) {
+    a -= floor(a);
+    a *= 16;
+    // right now we are only using the most significant hexit
+    // but some of the following are probably accurate too
+    // figure out how accurate we can get
+    return (uint8_t) a;
+}
+
+void print_all_hexits(double s) {
+    do {
+        printf("%0x",extract_hexit(s));
+        s *= 16;
+        s -= floor(s);
+
+    } while(s > 0);
+}
+
+std::string extract_n_hexits(double s, size_t n) {
+    std::stringstream ss;
+    char* hex = "0123456789abcdef";
+    for(size_t i = 0; i < n; i++) {
+        ss <<  hex[extract_hexit(s)];
+        s *= 16;
+        s -= floor(s);
+    }
+    return ss.str();
+}
+
+void pi_slice_avx(options opts) {
+    int step = (opts.n > 1E5) ? 10 : 2;
+    for(int i = 0; i < opts.range; i+= step) {
+        std::cout << extract_n_hexits(pi_spigot_avx(opts.n + i), step);
+    }
+    std::cout << std::endl;
+}
+
 int main(int argc, char* const* argv)
 {
     options opts = parse_args(argc, argv);
-
     if (opts.full) {
         printf("3.");
         opts.range = opts.n;
         opts.n = 0;
         pi_slice(opts);
     } else {
-        pi_slice(opts);
+        pi_slice_avx(opts);
     }
     return 0;
 }
