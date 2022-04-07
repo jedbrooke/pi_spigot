@@ -10,11 +10,9 @@
 
 #include "fractionalBignum.hpp"
 
-
 // https://stackoverflow.com/a/8498251
-u_int64_t modpow16(u_int64_t exponent, u_int64_t const mod) {
+u_int64_t modpow(u_int64_t base, u_int64_t exponent, u_int64_t const mod) {
     u_int64_t result = 1;
-    u_int64_t base = 16;
     while (exponent > 0) {
         if (exponent & 1) {
             __asm__(
@@ -36,6 +34,15 @@ u_int64_t modpow16(u_int64_t exponent, u_int64_t const mod) {
     return result;
 }
 
+
+
+u_int64_t modpow16(u_int64_t exponent, u_int64_t const mod) {
+    return modpow(16, exponent, mod);
+}
+
+u_int64_t modpow2(u_int64_t exponent, u_int64_t const mod) {
+    return modpow(2, exponent, mod);
+}
 
 /* precision for fractionalBignum*/
 const size_t D = 4;
@@ -62,7 +69,6 @@ fractionalBignum<D> component_sum(size_t n, u_int64_t b) {
         s2 += p * q;
         k++;
     } while(not p.isZero());
-
 #ifdef DEBUG
         if(b == 5){    
             std::cout << "s1:\t" << s1 << std::endl;
@@ -96,6 +102,72 @@ fractionalBignum<D> pi_spigot(size_t n) {
 
     return res;
 }
+
+fractionalBignum<D> component_sum_bellard(size_t n, u_int64_t m, u_int64_t j, int64_t l) {
+    int64_t lim = ((4 * (signed)n) + l) / 10;
+    // std::cout << "lim " << lim << std::endl;
+    fractionalBignum<D> s1;
+    size_t k;
+    for(k = 0; k <= lim; k++) {
+        u_int64_t mk_plus_j = (m * k) + j;
+        u_int64_t exponent = (4 * n) + l - (10 * k); 
+        if (exponent > ((4 * n) + l)) {
+            break;
+        }
+        u_int64_t numerator = modpow2(exponent, mk_plus_j);
+        auto p = fb_div<D>(numerator, mk_plus_j);
+        if(k % 2 == 0) {
+            s1 += p;
+        } else {
+            s1 = s1 - p;
+        }
+    }
+    // std::cout << "k: " << k << std::endl;
+    // std::cout << "lim: " << lim << std::endl;
+
+    fractionalBignum<D> p;
+    fractionalBignum<D> s2;
+    k = ((4 * (signed)n) + l) / 10; 
+    do {
+        k++;
+        auto q = fb_div<D>(1, (m * k) + j);
+        p = fractionalBignum<D>(pow(2, (4 * (signed)n) + l - (10 * k)));
+        if(k % 2 == 0) {
+            s2 += q;
+        } else {
+            s2 = s2 - q;
+        }
+    } while(not p.isZero());
+    // std::cout << "accuracy iters: " << k - (((4 * n) + l) / 10) << std::endl;
+    s1 += s2;
+    // std::cout << "---" << std::endl;
+    return s1;
+
+}
+
+
+fractionalBignum<D> pi_spigot_bellard(size_t n) {
+    // std::cout << "finding a" << std::endl;
+    auto a = component_sum_bellard(n, 4, 1, -1);
+    // std::cout << "finding b" << std::endl;
+    auto b = component_sum_bellard(n, 4, 3, -6);
+    // std::cout << "finding c" << std::endl;
+    auto c = component_sum_bellard(n, 10, 1, 2);
+    // std::cout << "finding d" << std::endl;
+    auto d = component_sum_bellard(n, 10, 3, 0);
+    // std::cout << "finding e" << std::endl;
+    auto e = component_sum_bellard(n, 10, 5, -4);
+    // std::cout << "finding f" << std::endl;
+    auto f = component_sum_bellard(n, 10, 7, -4);
+    // std::cout << "finding g" << std::endl;
+    auto g = component_sum_bellard(n, 10, 9, -6);
+
+    fractionalBignum<D> res;
+    res = res - a - b + c - d - f + g;
+
+    return res;
+}
+
 
 typedef struct options {
     bool full;
@@ -152,6 +224,7 @@ options parse_args(int argc, char* const* argv) {
 
 void pi_slice(options opts) {
     const int step = (D * 16) - 4;
+    // const int step = 4;
     int total_steps = 0;
 
     for(int i = 0; i < opts.range; i+=step) {
