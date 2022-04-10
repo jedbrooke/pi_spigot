@@ -103,67 +103,60 @@ fractionalBignum<D> pi_spigot(size_t n) {
     return res;
 }
 
-fractionalBignum<D> component_sum_bellard(size_t n, u_int64_t m, u_int64_t j, int64_t l) {
-    int64_t lim = ((4 * (signed)n) + l) / 10;
-    // std::cout << "lim " << lim << std::endl;
-    fractionalBignum<D> s1;
-    size_t k;
-    for(k = 0; k <= lim; k++) {
-        u_int64_t mk_plus_j = (m * k) + j;
-        u_int64_t exponent = (4 * n) + l - (10 * k); 
-        if (exponent > ((4 * n) + l)) {
-            break;
-        }
-        u_int64_t numerator = modpow2(exponent, mk_plus_j);
-        auto p = fb_div<D>(numerator, mk_plus_j);
-        if(k % 2 == 0) {
-            s1 += p;
-        } else {
-            s1 = s1 - p;
-        }
-    }
-    // std::cout << "k: " << k << std::endl;
-    // std::cout << "lim: " << lim << std::endl;
+fractionalBignum<D> component_sum_bellard(size_t n, u_int64_t a, u_int64_t b, int64_t c) {
+    fractionalBignum<D> s;
+    fractionalBignum<D> prev;
+    
+    u_int64_t k = 0;
 
-    fractionalBignum<D> p;
-    fractionalBignum<D> s2;
-    k = ((4 * (signed)n) + l) / 10; 
-    do {
+    u_int64_t numerator = 0;
+    u_int64_t denominator = 0;
+
+    int64_t exponent = 0;
+
+    bool keep_looping = true;
+    while(keep_looping) {
+        denominator = (a * k) + b;
+        exponent = c + (signed)n - 1 - (10 * k);
+        numerator = (exponent > 0) ? modpow2(exponent, denominator) : 1;
+
+        auto p = fb_div<D>(numerator, denominator);
+        if (exponent < 0) {
+            auto q = fractionalBignum<D>(pow(2, exponent)); 
+            keep_looping = not q.isZero();
+            p = p * q;
+        }
+
+        if (k & 1) {
+            s = s - p;
+        } else {
+            s = s + p;
+        }
+
         k++;
-        auto q = fb_div<D>(1, (m * k) + j);
-        p = fractionalBignum<D>(pow(2, (4 * (signed)n) + l - (10 * k)));
-        if(k % 2 == 0) {
-            s2 += q;
-        } else {
-            s2 = s2 - q;
-        }
-    } while(not p.isZero());
-    // std::cout << "accuracy iters: " << k - (((4 * n) + l) / 10) << std::endl;
-    s1 += s2;
-    // std::cout << "---" << std::endl;
-    return s1;
-
+    } 
+    return s;
 }
 
 
 fractionalBignum<D> pi_spigot_bellard(size_t n) {
     // std::cout << "finding a" << std::endl;
-    auto a = component_sum_bellard(n, 4, 1, -1);
+    auto a = component_sum_bellard(n, 10, 1, 2);
     // std::cout << "finding b" << std::endl;
-    auto b = component_sum_bellard(n, 4, 3, -6);
+    auto b = component_sum_bellard(n, 10, 3, 0);
     // std::cout << "finding c" << std::endl;
-    auto c = component_sum_bellard(n, 10, 1, 2);
+    auto c = component_sum_bellard(n, 4, 1, -1);
     // std::cout << "finding d" << std::endl;
-    auto d = component_sum_bellard(n, 10, 3, 0);
+    auto d = component_sum_bellard(n, 10, 5, -4);
     // std::cout << "finding e" << std::endl;
-    auto e = component_sum_bellard(n, 10, 5, -4);
+    auto e = component_sum_bellard(n, 10, 7, -4);
     // std::cout << "finding f" << std::endl;
-    auto f = component_sum_bellard(n, 10, 7, -4);
+    auto f = component_sum_bellard(n, 10, 9, -6);
     // std::cout << "finding g" << std::endl;
-    auto g = component_sum_bellard(n, 10, 9, -6);
+    auto g = component_sum_bellard(n, 4, 3, -6);
 
     fractionalBignum<D> res;
-    res = res - a - b + c - d - f + g;
+    res = a - b - c - d - e + f - g;
 
     return res;
 }
@@ -223,18 +216,17 @@ options parse_args(int argc, char* const* argv) {
 }
 
 void pi_slice(options opts) {
-    const int step = (D * 16) - 4;
-    // const int step = 4;
+    const int step_hex = (16 * D) - 4;
+    const int step_bin = step_hex * 4;
     int total_steps = 0;
-
-    for(int i = 0; i < opts.range; i+=step) {
-        auto d = pi_spigot(opts.n + i);
+    for(int i = 0; i < opts.range; i+=step_bin) {
+        auto d = pi_spigot_bellard(opts.n + i);
         auto str = d.hex_str();
-        total_steps += step;
+        total_steps += step_bin;
         if(total_steps < opts.range) {
-            std::cout << str.substr(0,step);
+            std::cout << str.substr(0, step_hex);
         } else {
-            std::cout << str.substr(0,opts.range - (total_steps - step));
+            std::cout << str.substr(0, (opts.range - (total_steps - step_bin)) / 4);
         }
     }
     printf("\n");
@@ -250,6 +242,8 @@ int main(int argc, char* const* argv)
         opts.n = 0;
         pi_slice(opts);
     } else {
+        opts.n = (opts.n * 4) + 1;
+        opts.range = (opts.range * 4);
         pi_slice(opts);
     }
     return 0;
