@@ -165,6 +165,7 @@ fractionalBignum<D> pi_spigot_bellard(size_t n) {
 typedef struct options {
     bool full;
     bool progress;
+    bool bellard;
     size_t n;
     size_t range;
 } options;
@@ -173,9 +174,9 @@ typedef struct options {
 options parse_args(int argc, char* const* argv) {
     int option;
     bool error = false;
-    options opts = {false, false, 0, 50};
+    options opts = {false, false, false, 0, 50};
 
-    while((option = getopt(argc, argv, "fp")) != -1) {
+    while((option = getopt(argc, argv, "fpb")) != -1) {
         switch(option) {
             case 'f':
                 opts.full = true;
@@ -183,8 +184,11 @@ options parse_args(int argc, char* const* argv) {
             case 'p':
                 opts.progress = true;
                 break;
+            case 'b':
+                opts.bellard = true;
+                break;
             case '?':
-                fprintf(stderr,"unkown option!");
+                fprintf(stderr,"unkown option!\n");
                 error = true;
                 break;
         }
@@ -199,12 +203,12 @@ options parse_args(int argc, char* const* argv) {
         optind++;
     }
     if (optind != argc) {
-        fprintf(stderr,"unkown extra values!");
+        fprintf(stderr,"unkown extra values!\n");
         error = true;
     }
 
     if (error) {
-        fprintf(stderr,"Usage: ./pi_spigot [-f -p] n [range (default 50)]");
+        fprintf(stderr,"Usage: ./pi_spigot [-f -p -b] n [range (default 50)]\n");
         exit(1);
     }
 
@@ -216,6 +220,22 @@ options parse_args(int argc, char* const* argv) {
 }
 
 void pi_slice(options opts) {
+    const int step = (16 * D) - 4;
+    int total_steps = 0;
+    for(int i = 0; i < opts.range; i+=step) {
+        auto d = pi_spigot(opts.n + i);
+        auto str = d.hex_str();
+        total_steps += step;
+        if(total_steps < opts.range) {
+            std::cout << str.substr(0, step);
+        } else {
+            std::cout << str.substr(0, opts.range - (total_steps - step));
+        }
+    }
+    printf("\n");
+}
+
+void pi_slice_bellard(options opts) {
     const int step_hex = (16 * D) - 4;
     const int step_bin = step_hex * 4;
     int total_steps = 0;
@@ -242,9 +262,15 @@ int main(int argc, char* const* argv)
         opts.n = 0;
         pi_slice(opts);
     } else {
-        opts.n = (opts.n * 4) + 1;
-        opts.range = (opts.range * 4);
-        pi_slice(opts);
+        if (opts.bellard) {
+            std::cerr << "using bellard's formula" << std::endl;
+            opts.n = (opts.n * 4) + 1;
+            opts.range = (opts.range * 4);
+            pi_slice_bellard(opts);
+        } else {
+            std::cerr << "using standard BBP formula" << std::endl;
+            pi_slice(opts);
+        }
     }
     return 0;
 }
