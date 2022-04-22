@@ -20,7 +20,7 @@ the `-f` flag will make the program output all hexits from 0 to `n`
 ## TODO:
  - [x] figure out why it breaks after around 500mil
  - [x] implement basic [BBP formula](https://en.wikipedia.org/wiki/Bailey%E2%80%93Borwein%E2%80%93Plouffe_formula)
- - [ ] look into implementing [Bellard's formula](https://en.wikipedia.org/wiki/Bellard%27s_formula)
+ - [x] look into implementing [Bellard's formula](https://en.wikipedia.org/wiki/Bellard%27s_formula)
  - [x] implement custom 64bit fractional types
     - [x] experiment with *faster* 64bit division
  - [x] **implement *enhanced* arbitrary depth fractional types for more precision**
