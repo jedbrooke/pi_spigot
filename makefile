@@ -1,10 +1,9 @@
 CC=g++
-CFLAGS=-I./fractionalBignum -lm -g --std=c++11 -O3
+CFLAGS=-I./fractionalBignum --std=c++14 -O3
+LDFLAGS=-lm -pthread
 
 default: pi_spigot
 
-.PHONY: deps
-deps: fractionalBignum.a
 
 fractionalBignum.a: fractionalBignum
 	cd fractionalBignum; \
@@ -12,14 +11,14 @@ fractionalBignum.a: fractionalBignum
 	cp fractionalBignum.a ..
 
 
-pi_spigot: pi_spigot.cpp deps
-	$(CC) -o pi_spigot pi_spigot.cpp fractionalBignum.a $(CFLAGS)
+pi_spigot: pi_spigot.cpp fractionalBignum.a WorkManager.o Worker.o modpow.o
+	$(CC) $(CFLAGS) -o pi_spigot pi_spigot.cpp *.o fractionalBignum.a $(LDFLAGS) 
 
 .PHONY: check
 check: pi_spigot check.sh
 	./check.sh
-	
-%.o: %.c
+
+%.o: %.cpp
 	$(CC) -c $< $(CFLAGS)
 
 .PHONY: clean
