@@ -71,7 +71,7 @@ void Bellard_Worker::work() {
     bool keep_looping = true;
     while(keep_looping) {
         denominator = (Worker_Parameters::a * k) + Worker_Parameters::b;
-        exponent = Worker_Parameters::c + (signed)Worker_Parameters::n - 1 - (10 * k);
+        exponent = Worker_Parameters::c + Worker_Parameters::n - 1 - (10 * k);
         numerator = (exponent > 0) ? modpow2(exponent, denominator) : 1;
 
         auto p = fb_div<D>(numerator, denominator);

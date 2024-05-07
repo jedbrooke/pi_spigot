@@ -2,6 +2,11 @@
 *.o
 *.a
 *.txt
+!CMakeLists.txt
 gmon.out
 *.dSYM
 pi_spigot
+build
+.idea
+cmake-build-debug
+.DS_Store

@@ -123,6 +123,13 @@ void pi_slice_bellard(options opts) {
 
 int main(int argc, char* const* argv)
 {
+#ifdef __x86_64__
+    std::cerr << "running x86" << std::endl;
+#else
+    std::cerr << "running generic" << std::endl;
+#endif
+
+
     options opts = parse_args(argc, argv);
     if (opts.threads == 0) {
         opts.threads = std::thread::hardware_concurrency();

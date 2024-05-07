@@ -24,6 +24,14 @@ void WorkManager::set_n(size_t n) {
 
 fractionalBignum<D> WorkManager::run_component(u_int64_t a, u_int64_t b, int64_t c) {
     Worker::SET_PARAMETERS(a, b, c);
+
+    // special case for singe thread. just run directly on the main thread
+    if (workers.size() == 1) {
+        workers[0]->work();
+        return workers[0]->get_work();
+    }
+
+
     std::vector<std::thread*> threads;
     for(int i = 0; i < workers.size(); i++) {
         threads.push_back(new std::thread([this, i]() {
